@@ -11,7 +11,7 @@ $aliases = array(
 );
 
 // Do you want a log file with web hook posts?
-$log = FALSE;
+$log = TRUE;
 
 
 
@@ -30,19 +30,6 @@ if( ! empty($POST['payload']) ) {
 	$payload = json_decode( file_get_contents( 'php://input' ), true );
 }
 
-if (empty($ip)) {
-  header($protocol.' 400 Bad Request');
-  die('invalid ip address');
-} elseif (empty($payload)) {
-  header($protocol.' 400 Bad Request');
-  die('missing payload');
-}
-
-# Make sure we have something
-if(empty($payload)) {
-  die("<img src='http://i.qkme.me/3sst5f.jpg' />");
-}
-
 # Log posts
 if($log) {
   file_put_contents($_SERVER['SCRIPT_FILENAME'].'.log',"Web Hook Post: ".date("F j, Y, g:i a")."\n".print_r( $payload, true )."\n\n", FILE_APPEND);
@@ -52,10 +39,8 @@ if($log) {
 if ( isset( $payload['push'] ) ) {
   $lastChange = $payload['push']['changes'][ count( $payload['push']['changes'] ) - 1 ]['new'];
   $branch     = isset( $lastChange['name'] ) && ! empty( $lastChange['name'] ) ? $lastChange['name'] : '';
-} else if( isset($payload['repository']['url']) && strpos($payload['repository']['url'],"github")!==FALSE ) {
+} else if( isset($payload['repository']['url']) && strpos($payload['repository']['url'],"github")!==TRUE ) {
   $branch = str_replace("refs/heads/","",$payload['ref']);
-} else {
-  $branch = "NO-BRANCH-DETECTED-DO-NOT-CREATE-A-FOLDER-WITH-THIS-NAME";
 }
 
 # Container for directories
@@ -72,8 +57,6 @@ if( array_key_exists($branch,$aliases) ) {
   # If we have an array of aliases, merge it in
   if( is_array($aliases[$branch]) ) {
     $list = $aliases[$branch];
-    # delete non directories
-    $list = array_filter($list,"filterNonDir");
     # merge with existing directories
     $dirs_to_update = array_merge($dirs_to_update,$list);
   }
@@ -102,7 +85,4 @@ foreach($dirs_to_update as $dir) {
 # =====
 # util
 # ====
-function filterNonDir($path) {
-  # If path doesn't exist, take it out of the array
-  return is_dir($path) ? $path:FALSE;
 }
